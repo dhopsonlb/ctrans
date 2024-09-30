@@ -330,13 +330,12 @@ def scan_dir(dirname, overwrite: bool = False, no_write: bool = False):
 				file_list.append(os.path.join(scan_t[0], f))
 
 	scan_list = [
-		os.path.join(scan_t[0], file) for file in file_list
-		if is_source(file) or is_script(file)
+		(os.path.join(scan_t[0], file), overwrite, no_write) for file in file_list if is_source(file) or is_script(file)
 	]
 
 	dev = 1
 
-	pool.map(lambda path: scan_file(path, overwrite, no_write), scan_list)
+	pool.starmap(scan_file, scan_list)
 	pool.close()
 	pool.join()
 
