@@ -20,7 +20,9 @@ USAGE:
         -e      set input file encoding
         -o      set output file encoding
         -t      set trace (debugging output)
-
+        -O for overwrite (y/1/true), prevents creating e.g. mycode.c.en files.
+        -N for no write (y/1/true), still prints translated code to stdout, but doesn't modify files.
+        -L for language (e.g. zh-CN), default is auto for autodetect.
 
 DECODE/ENCODE NOTES:
     the default encoding and decoding is utf-8. specifying 'auto' for the

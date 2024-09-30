@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # using Python 2.7!
 # translates comments in code
@@ -18,7 +18,7 @@
 # $env:GOOGLE_APPLICATION_CREDENTIALS="B:\AWI\Python\ctrans\Python Translate-50994b9b6934.json"
 
 
-# sudo pip install googletrans==3.1.0a0
+# sudo pip install googletrans==4.0.0-rc1
 # https://github.com/ssut/py-googletrans/issues/280
 from googletrans import Translator
 
@@ -86,7 +86,7 @@ def translate(text):
 		if trace:
 			print('[+] translation requested...')
 		sys.stdout.flush()
-
+	
 		resp = translator.translate(
 			text,
 			dest=lang,
@@ -94,7 +94,7 @@ def translate(text):
 		)
 
 		try:
-			retText += resp['translatedText']
+			retText += resp.text
 		except:
 			retText += text
 		if trace:
@@ -110,6 +110,9 @@ def translate(text):
 def trans_block_comment(comment):
 	# comment should be arrive as a re.Match object, need to grab the group
 	trans = str(comment.group())
+
+	old = trans
+	
 	trans = trans.split('\n')
 
 	# translate each line and compensate for the fact that gtrans eats your
@@ -119,7 +122,10 @@ def trans_block_comment(comment):
 	trans = [line.replace(' * /', ' */') for line in trans]
 	comment = '\n'.join(trans)
 
-	sys.stdout.write("B"); sys.stdout.flush()
+	new = comment
+
+	if old != new:
+		print(f'\"{old}\" >> \"{new}\"')
 
 	# here's your stupid translation
 	return comment
@@ -130,10 +136,14 @@ def trans_line_comment(comment):
 	if trace:
 		print((trans.encode('utf-8')))
 	trans = trans.lstrip('//')
-	trans = translate(trans.strip())
-	comment = '// %s' % trans
 
-	sys.stdout.write("L"); sys.stdout.flush()
+	old = trans
+	trans = translate(trans.strip())
+	new = trans
+	comment = '//%s' % trans
+
+	if old != new:
+		print(f'\"{old}\" >> \"{new}\"')
 
 	return comment
 
@@ -148,8 +158,14 @@ def trans_scripting_comment(comment):
 		return trans
 
 	trans = trans.lstrip('#')
+
+	old = trans
 	trans = translate(trans.strip())
-	comment = '# %s' % trans
+	new = trans
+	comment = '#%s' % trans
+
+	if old != new:
+		print(f'\"{old}\" >> \"{new}\"')
 
 	return comment
 
@@ -168,15 +184,15 @@ def trans_scripting_comment(comment):
 # code from having to involve locking or shared memory.
 def guess_encoding(filename, detection_threshold=0.8, return_dict=False):
 	if trace:
-		print('[+] attempting to autodetect coding for %s' % filename)
+		print(('[+] attempting to autodetect coding for %s' % filename))
 	try:
 		f = open(filename, 'rb')
 		guess = chardet.detect(f.read())
 		f.close()
 	except IOError as e:
 		if trace:
-			print('[!] error on file %s, skipping...' % filename)
-		print('\t(error returned was %s)' % str(e))
+			print(('[!] error on file %s, skipping...' % filename))
+		print(('\t(error returned was %s)' % str(e)))
 		if not return_tuple:
 			return False
 
@@ -184,18 +200,18 @@ def guess_encoding(filename, detection_threshold=0.8, return_dict=False):
 	confidence = float(confidence)
 
 	if confidence < detection_threshold:
-		print('[!] too low of a confidence (%f) to guess coding for %s' % (
+		print(('[!] too low of a confidence (%f) to guess coding for %s' % (
 			guess['confidence'],
 			filename
-		))
+		)))
 		return False
 	else:
 		if trace:
-			print('[+] detected coding %s for file %s (confidence: %0.2f)' % (
+			print(('[+] detected coding %s for file %s (confidence: %0.2f)' % (
 				guess['encoding'],
 				filename,
 				guess['confidence']
-			))
+			)))
 		return guess['encoding'] if not return_dict else {
 			'encoding': guess['encoding'],
 			'confidence': guess['confidence'],
@@ -236,8 +252,8 @@ def guess_dir(dir):
 
 
 # translate an individual file
-def scan_file(filename):
-	new_filename = filename + ext
+def scan_file(filename, overwrite: bool = False, no_write: bool = False):
+	new_filename = filename + ext if not overwrite else filename
 
 	# the reason we use a local variable for the encoding based on either
 	# the guess_encoding() function or a copy of the encodeas global is
@@ -247,7 +263,7 @@ def scan_file(filename):
 	if autodetect:
 		encoding = guess_encoding(filename)
 		if not encoding:
-			print('[!] could not reliably determine encoding for %s' % filename)
+			print(('[!] could not reliably determine encoding for %s' % filename))
 			print('\taborting!')
 			return
 	else:
@@ -263,15 +279,16 @@ def scan_file(filename):
 		)
 		ucode = reader.read()  # untranslated code
 		# write translated
-		writer = codecs.open(
-			new_filename,
-			mode='w',
-			encoding=decodeas,
-		)
+		if not no_write:
+			writer = codecs.open(
+				new_filename,
+				mode='w',
+				encoding=decodeas,
+			)
 		reader.close()
 	except IOError as e:  # abort on IO error
-		print('[!] error on file %s, skipping...' % filename)
-		print('\t(error returned was %s)' % str(e))
+		print(('[!] error on file %s, skipping...' % filename))
+		print(('\t(error returned was %s)' % str(e)))
 		return None
 
 	if not ucode:
@@ -283,12 +300,15 @@ def scan_file(filename):
 	elif is_script(filename):
 		tcode = scrub_scomments.sub(trans_scripting_comment, ucode)
 
-	writer.write(tcode)
+	if not no_write:
+		writer.write(tcode)
 
-	print('[+] translated %s to %s...' % (filename, new_filename))
+		print(('[+] translated %s to %s...' % (filename, new_filename)))
+	else:
+		print('[+] -N set, not writing output to file')
 
 # look through a directory
-def scan_dir(dirname):
+def scan_dir(dirname, overwrite: bool = False, no_write: bool = False):
 	global autodetect  # used to tweak better file encoding
 	global encodeas  # scans
 
@@ -316,7 +336,7 @@ def scan_dir(dirname):
 
 	dev = 1
 
-	pool.map(scan_file, scan_list)
+	pool.map(lambda path: scan_file(path, overwrite, no_write), scan_list)
 	pool.close()
 	pool.join()
 
@@ -338,29 +358,50 @@ def is_script(filename):
 
 ##### start main code #####
 if __name__ == '__main__':
-	opts, args = getopt.getopt(sys.argv[1:], 's:d:e:o:t')
+	opts, args = getopt.getopt(sys.argv[1:], 's:d:e:o:t:O:N:L')
 	dir_mode = False
-	target = None
-
+	target: str = None
+	overwrite = False
+	no_write = True
+	
 	for (opt, arg) in opts:
-		if opt == '-s':
-			dir_mode = False
-			target = arg
-		if opt == '-d':
-			dir_mode = True
-			target = arg
-		if opt == '-e':
-			if not arg == 'auto':
-				encodeas = arg
-			else:
-				autodetect = True
-		if opt == '-o':
-			decodeas = arg
-
+		match opt:
+			case '-s':
+				dir_mode = False
+				target = arg
+				print(target, arg)
+			case '-d':
+				dir_mode = True
+				target = arg
+			case '-e':
+				if not arg == 'auto':
+					encodeas = arg
+				else:
+					autodetect = True
+			case '-o':
+				decodeas = arg
+			case '-O':
+				overwrite = bool(arg.lower() in ('true', 'y', '1', 'yes'))
+			case '-N':
+				no_write = bool(arg.lower() in ('true', 'y', '1', 'yes'))
+			case '-L':
+				lang_src = arg
+			case _: #Not really hit because getopt catches it itself. Still useful for documentation.
+				sys.stderr.write(f'''ERROR: Unknown option \"{opt}\".\n
+								valid options are:\n\n
+								
+								-s for single file,\n
+								-d for directory,\n
+								-e for encoding out,\n
+								-o for decoding in,\n
+								-O for overwrite (y/1/true),\n
+								-N for no write (y/1/true),\n
+								-L for language (e.g. zh-CN)\n''')
+				os._exit(1)
 
 	if dir_mode:
-		scan_dir(target)
+		scan_dir(target, overwrite, no_write)
 	else:
-		scan_file(target)
+		scan_file(target, overwrite, no_write)
 
 
