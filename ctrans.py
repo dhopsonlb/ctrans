@@ -200,11 +200,12 @@ def guess_encoding(filename, detection_threshold=0.8, return_dict=False):
 	confidence = float(confidence)
 
 	if confidence < detection_threshold:
-		print(('[!] too low of a confidence (%f) to guess coding for %s' % (
+		print(('[!] too low of a confidence (%f) to guess encoding for %s, defaulting to utf-8' % (
 			guess['confidence'],
 			filename
 		)))
-		return False
+		return 'utf-8' if not return_dict else { 'encoding': 'utf-8', 'confidence': 1.0 }
+		
 	else:
 		if trace:
 			print(('[+] detected coding %s for file %s (confidence: %0.2f)' % (
@@ -219,8 +220,8 @@ def guess_encoding(filename, detection_threshold=0.8, return_dict=False):
 
 
 # attempt to guess dir
-def guess_dir(dir):
-	walk = os.walk(dir)
+def guess_dir(dir_path):
+	walk = os.walk(dir_path)
 	codes = { }
 	codec_scan = []
 
@@ -305,7 +306,10 @@ def scan_file(filename, overwrite: bool = False, no_write: bool = False):
 	if not no_write:
 		writer.write(tcode)
 
-		print(('[+] translated %s to %s...' % (filename, new_filename)))
+		if overwrite:
+			print(f'[+] \"{filename}\" overwritten with translation changes ...')
+		else:
+			print(f'[+] \"{filename}\" translated and changes written to \"{new_filename}\" ...')
 	else:
 		print('[+] -N set, not writing output to file')
 

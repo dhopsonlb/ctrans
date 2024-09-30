@@ -8,6 +8,12 @@ comments formatted as '### comment' will still end up as '# comment', this
 is a bug i don't care about fixing atm; i'm more concerned with just getting
 this working.
 
+INSTALLATION:
+
+pip3 install -r requirements.txt
+
+EXAMPLE USAGE:
+./ctrans.py -O true -d /home/user/chinese_pseudomalware/src
 
 USAGE:
     ctrans.py -s <filename>
