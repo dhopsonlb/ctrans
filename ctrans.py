@@ -253,6 +253,8 @@ def guess_dir(dir):
 
 # translate an individual file
 def scan_file(filename, overwrite: bool = False, no_write: bool = False):
+	print(f'[+] Scanning file \"{filename}\"...')
+	
 	new_filename = filename + ext if not overwrite else filename
 
 	# the reason we use a local variable for the encoding based on either
@@ -361,7 +363,7 @@ if __name__ == '__main__':
 	dir_mode = False
 	target: str = None
 	overwrite = False
-	no_write = True
+	no_write = False
 	
 	for (opt, arg) in opts:
 		match opt:
