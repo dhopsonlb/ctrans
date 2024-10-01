@@ -28,7 +28,7 @@ import getopt
 import multiprocessing
 import os
 import re
-import sys
+import sys, traceback
 import urllib.request, urllib.parse, urllib.error
 
 
@@ -86,17 +86,24 @@ def translate(text):
 		if trace:
 			print('[+] translation requested...')
 		sys.stdout.flush()
-	
-		resp = translator.translate(
-			text,
-			dest=lang,
-			src=lang_src,
-		)
-
+		
 		try:
-			retText += resp.text
-		except:
+			resp = translator.translate(
+				text,
+				dest=lang,
+				src=lang_src,
+			)
+
+			try:
+				retText += resp.text
+			except AttributeError:
+				retText += text
+				
+		except Exception as e:
+			sys.stderr.write(f'[!] Got exception {type(e).__name__}! from translator.translate! Traceback: {traceback.format_exc()}\n')
+			
 			retText += text
+
 		if trace:
 			print('\treceived!')
 
@@ -282,15 +289,10 @@ def scan_file(filename, overwrite: bool = False, no_write: bool = False):
 		)
 		ucode = reader.read()  # untranslated code
 		# write translated
-		if not no_write:
-			writer = codecs.open(
-				new_filename,
-				mode='w',
-				encoding=decodeas,
-			)
+
 		reader.close()
 	except IOError as e:  # abort on IO error
-		print(('[!] error on file %s, skipping...' % filename))
+		print(('[!] error on read file %s, skipping...' % filename))
 		print(('\t(error returned was %s)' % str(e)))
 		return None
 
@@ -304,7 +306,18 @@ def scan_file(filename, overwrite: bool = False, no_write: bool = False):
 		tcode = scrub_scomments.sub(trans_scripting_comment, ucode)
 
 	if not no_write:
-		writer.write(tcode)
+		try:
+			writer = codecs.open(
+				new_filename,
+				mode='w',
+				encoding=decodeas,
+			)
+			
+			writer.write(tcode)
+		except IOError as e:  # abort on IO error
+			print(('[!] error on write file %s, skipping...' % filename))
+			print(('\t(error returned was %s)' % str(e)))
+			return None
 
 		if overwrite:
 			print(f'[+] \"{filename}\" overwritten with translation changes ...')
